@@ -1,0 +1,584 @@
+[project]
+name = "esfera-creix-api"
+version = "0.1.0"
+requires-python = ">=3.13, <3.14"
+# Dependencies are added per-plan as features land — not speculatively.
+# Phase 2/3 deps (google-cloud-kms, python-magic, Pillow, schemathesis, …) are
+# added by their owning plans (013, 017, 028, 027).
+dependencies = [
+    # ── Web / ASGI ───────────────────────────────────────────────────────────
+    "fastapi>=0.115.0",
+    "granian>=1.6.0",
+    # ── Persistence ────────────────────────────────────────────────────────────
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    # ── Validation / settings ──────────────────────────────────────────────────
+    "pydantic[email]>=2.10.0",
+    "pydantic-settings>=2.14.2",
+    # ── Auth (Plan 005) — RS256 + Argon2id. python-jose + passlib REMOVED. ──────
+    "pyjwt[crypto]>=2.10.0",
+    "argon2-cffi>=23.1.0",
+    "bcrypt>=4.2.0", # legacy-hash verification shim ONLY (app/auth/password.py)
+    "zxcvbn>=4.5.0,<5", # bundled dictionary password-strength estimator (Plan 005 H2)
+    "pyzipper>=0.4.0,<0.5", # AES-256 PIN-protected GDPR portability archives
+    "reportlab>=4.2.0,<5", # bounded localized PDF inside the canonical GDPR ZIP
+    "pyotp>=2.9.0", # TOTP 2FA enrolment (Plan 005 Step 12)
+    "cryptography>=50.0.0", # RSA/AES plus PYSEC-2026-3552 security floor
+    # ── Background work ────────────────────────────────────────────────────────
+    "celery>=5.4.0",
+    "redis>=5.2.0",
+    # ── i18n / observability ───────────────────────────────────────────────────
+    "babel>=2.16.0",
+    "structlog>=24.4.0",
+    "sentry-sdk[fastapi]>=2.18.0",
+    # ── Field-level encryption (Plan 013) ─────────────────────────────────────
+    "email-validator>=2.0.0", # RFC-5321 email normalisation for HMAC blind index
+    "jcs>=0.2.1",
+    # ── Upload pipeline (Plan 017) — MIME sniff + canonical image boundary ────
+    "python-magic>=0.4.27", # magic-number MIME sniff on first 262 bytes (never trust client)
+    "pillow>=12.3.0", # image canonicalization + thumbnails (ImageMagick BANNED)
+    "pillow-heif>=1.0.0", # registered HEIC decoder/encoder for every allowlisted image
+    "piexif>=1.1.3", # EXIF fixture/inspection support for upload safety tests
+    "qrcode[pil]>=8.2,<9", # deterministic D07 observation-link QR attachments
+    # ── Content moderation (Plan 028) — PDF active-content sanitization ────────
+    "pikepdf>=9.0.0", # strip /JavaScript /Launch /RichMedia /EmbeddedFile /Action; quarantine PDFs carrying them
+    # ── AI (Plan 060) — real Gemini on Vertex AI EU (europe-west3) ─────────────
+    "google-genai>=1.0.0", # unified Gemini SDK; vertexai=True → Vertex AI EU (EU residency + DPA)
+    "stripe>=15.3.0",
+    "app-store-server-library>=3.1.2",
+    "google-api-python-client>=2.198.0",
+    "google-auth>=2.53.0",
+    "httpx[http2]>=0.28.1",
+    "h2>=4.4.1", # CVE-2026-71554 security floor for httpx HTTP/2 transport
+    "jsonschema>=4.26.0",
+    "psycopg[binary]>=3.2.0",
+    "rfc3161-client==1.0.7",
+    "pyyaml>=6.0.3",
+    "webauthn>=2.7,<3",
+    "pypdf>=5.0,<7",
+    "pypdfium2>=4.30,<6",
+]
+
+[project.optional-dependencies]
+ai-ner-core = [
+    # Model wheels are installed separately from the checked manifest because uv/PyPI does
+    # not index spaCy pipeline packages. Docker verifies their upstream wheel SHA-256 before
+    # install and verifies every installed wheel RECORD entry afterwards.
+    "spacy==3.8.14",
+]
+
+kms-google = [
+    # Optional dep — only installed in production (GCP). Local dev uses LocalKmsAdapter.
+    # Install with: uv pip install esfera-creix-api[kms-google]
+    "google-cloud-kms>=3.0.0",
+]
+
+storage-spaces = [
+    # Optional dep — only installed in production (DO Spaces / S3). Local dev + tests
+    # use LocalFsObjectStorage. Install with: uv pip install esfera-creix-api[storage-spaces]
+    # Plan 061 wires real Spaces credentials; the SpacesObjectStorage adapter is never
+    # exercised in tests (factory selects 'local' under ENVIRONMENT=test).
+    "boto3>=1.35.0",
+]
+
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-mock>=3.14.0",
+    "pytest-cov>=6.0.0",         # coverage gates (Plan 027)
+    "pytest-xdist>=3.6.0",       # parallel test workers, one cloned DB each
+    "pytest-docker>=3.1.0",      # fresh-DB migration timing test (Plan 007)
+    "factory-boy>=3.3.0",
+    "httpx>=0.27.0",
+    "ruff>=0.8.0",
+    "import-linter>=2.0",        # cross-domain import enforcement (Plan 009)
+    "bandit>=1.8.0",             # SAST on the auth module (Plan 005 / 012)
+    "freezegun>=1.5.0",          # deterministic time in token + tz tests
+    "hypothesis>=6.100.0",       # property-based crypto round-trip tests (Plan 013)
+    "pip-audit>=2.9.0",
+    "schemathesis>=4.6,<5",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF", "TID"]
+# A4–A9 and CONCURRENTLY are custom codes from app/lint/architecture.py and
+# app/lint/alembic_migration.py. Registering them here suppresses ruff's RUF102
+# (invalid-noqa-code) warning when these codes appear in # noqa comments.
+external = ["A4", "A5", "A6", "A7", "A8", "A9", "CONCURRENTLY"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+# python-jose / jose: replaced by pyjwt (Plan 005). Forbidden everywhere.
+"jose" = {msg = "python-jose is forbidden — use pyjwt (app.auth.jwt_signer). See docs/architecture/lint-rules.md#tid-banned-imports"}
+"jose.jwt" = {msg = "python-jose is forbidden — use pyjwt (app.auth.jwt_signer). See docs/architecture/lint-rules.md#tid-banned-imports"}
+# passlib: replaced by argon2-cffi (Plan 005). Forbidden everywhere.
+"passlib" = {msg = "passlib is forbidden — use argon2-cffi (app.auth.password). See docs/architecture/lint-rules.md#tid-banned-imports"}
+"passlib.context" = {msg = "passlib is forbidden — use argon2-cffi (app.auth.password). See docs/architecture/lint-rules.md#tid-banned-imports"}
+"passlib.hash" = {msg = "passlib is forbidden — use argon2-cffi (app.auth.password). See docs/architecture/lint-rules.md#tid-banned-imports"}
+# jwt (PyJWT): only allowed through app.auth — see per-file-ignores below.
+"jwt" = {msg = "Import jwt only via app.auth.jwt_signer or app.auth.jwks_cache. Direct jwt import forbidden elsewhere. See docs/architecture/lint-rules.md#tid-banned-imports"}
+# bcrypt: only allowed in app.auth.password — see per-file-ignores below.
+"bcrypt" = {msg = "Import bcrypt only in app/auth/password.py (legacy-hash shim). See docs/architecture/lint-rules.md#tid-banned-imports"}
+# ImageMagick bindings: BANNED project-wide (long RCE-CVE history — Plan 017).
+# Thumbnailing uses Pillow only (app/uploads/image_processing.py).
+"wand" = {msg = "ImageMagick (wand) is forbidden — use Pillow (app/uploads/image_processing.py). RCE-CVE history. See Plan 017."}
+"PythonMagick" = {msg = "ImageMagick (PythonMagick) is forbidden — use Pillow. RCE-CVE history. See Plan 017."}
+
+[tool.ruff.lint.per-file-ignores]
+# The migration linter + its tests legitimately embed "# noqa: CONCURRENTLY"-like text
+# (it IS the marker they implement), which ruff otherwise misreads as a real directive.
+"app/lint/alembic_migration.py" = ["RUF100"]
+"tests/test_migration_lint.py" = ["RUF100"]
+# Migration files contain raw SQL strings that legitimately exceed the line limit.
+# Wrapping them would harm readability without any benefit.
+# RUF100: "# noqa: CONCURRENTLY" is a custom marker for the internal migration linter,
+# not a real ruff code — suppress the invalid-noqa warning for migration files.
+"migrations/versions/*.py" = ["E501", "RUF100"]
+# factory_boy factories are intentionally PascalCase (mirror the model class they build).
+"tests/factories/*.py" = ["N802"]
+# Upload/sharing test helpers build local sessionmakers named SessionLocal (the
+# standard SQLAlchemy convention) inside functions — N806 (lowercase local) is noise here.
+"tests/uploads/*.py" = ["N806"]
+"tests/sharing/*.py" = ["N806"]
+"tests/arxiu/*.py" = ["N806"]
+# Moderation tests build local sessionmakers (SessionLocal) for the true-concurrency
+# strike-increment case — N806 (lowercase local) is noise there.
+"tests/moderation/*.py" = ["N806"]
+# Family tests build local sessionmakers (SessionLocal) for true-concurrency
+# cases and alias ProfileService as PS in those dedicated-session blocks.
+"tests/family/*.py" = ["N806", "N817"]
+# FastAPI dependency injection requires Depends() in function default arguments.
+# B008 (function call in default) is the intended FastAPI pattern here.
+"app/api/*.py" = ["B008"]
+"app/api/deps.py" = ["B008"]
+"app/api/routes/*.py" = ["B008"]
+"app/docs_auth.py" = ["B008"]
+"app/auth/internal_admin_gate.py" = ["B008"]
+# TID251 exemptions: auth modules that legitimately use jwt / bcrypt directly.
+# jwt: jwt_signer uses PyJWT for RS256 sign/verify; jwks_cache uses it for JWKS decode.
+"app/auth/jwt_signer.py" = ["TID251"]
+"app/auth/jwks_cache.py" = ["TID251"]
+# bcrypt: password.py is the single authorised legacy-hash verification shim.
+"app/auth/password.py" = ["TID251"]
+# scope_token_service: the X-Scope-Token is a SEPARATE HS256 token signed with a
+# per-tenant secret (Plan 022 §174-189) — distinct from the RS256 family JWT. This
+# is the single authorised module that may `import jwt` for HS256 scope-token signing.
+"app/places/scope_token_service.py" = ["TID251"]
+# scope_token_verify: the Plan 022b VERIFICATION counterpart — the only module that
+# may `import jwt` for HS256 scope-token signature verification (current+previous key).
+"app/places/scope_token_verify.py" = ["TID251"]
+# Test files: auth tests must forge/tamper tokens (jwt) and test the bcrypt shim.
+# These are the only test files that may directly use jwt/bcrypt — they test
+# the specific auth modules that hold the TID251 exemptions in production code.
+"tests/auth/test_token_model.py" = ["TID251"]
+"tests/auth/test_password.py" = ["TID251"]
+# Place tests decode the issued X-Scope-Token (HS256) to assert the nonce/jti claims.
+"tests/places/test_qr_issuance.py" = ["TID251"]
+# Plan 022b security suite: must forge tokens with foreign secrets + decode claims
+# (jwt) to prove the cross-tenant / forged-signature / malformed rejections.
+"tests/security/test_no_auth_observation.py" = ["TID251"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+# Only applies with `-n` (pytest-xdist): idle workers steal queued tests, which keeps the
+# 5-30 s migration-replay tests from leaving one worker as the tail.
+addopts = "--dist worksteal"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests (require Postgres + Redis)",
+    "no_database: Hermetic tests that must not initialize or migrate PostgreSQL",
+    "alembic_replay: Replays Alembic on its own throwaway database (slow; scheduled first under xdist)",
+    "timing: Asserts a wall-clock budget; skipped under xdist and run serially by `make test` (`-m timing`)",
+]
+filterwarnings = [
+    # asyncpg closes its socket in Connection.__del__; pytest's unraisableexception
+    # plugin calls gc.collect() at teardown, surfacing a benign "coroutine
+    # 'Connection._cancel' was never awaited" RuntimeWarning. Production disposes the
+    # engine pool at app-lifespan shutdown (conftest.pytest_sessionfinish disposes the
+    # test engines), so this is test-teardown noise only — not a real leak.
+    "ignore:coroutine 'Connection._cancel' was never awaited:RuntimeWarning",
+]
+
+# Coverage configuration (Plan 012).
+# Floor is 60% — measured at 65% on 2026-05-26 (172 tests).
+# TARGET is 70% per API.md §12.8; ratchet up as feature plans add tests.
+# addopts does NOT include --cov flags here — CI passes them explicitly so
+# `make test` (no coverage) remains fast in local development.
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+# Fail the coverage step in CI when below this floor.
+# Raise this number as test coverage grows — never lower it.
+fail_under = 60
+
+# import-linter contracts (Plan 009) — cross-domain import boundaries.
+#
+# Approach: use 'forbidden' contracts for the constraints that can be
+# precisely stated against the current module tree without specifying
+# cross-cutting exemptions (which import-linter validates as "must exist").
+#
+# Cross-domain independence contracts (app.up ↛ app.observation, etc.) are
+# documented in docs/architecture/lint-rules.md#import-linter-contracts but
+# NOT declared here yet — import-linter errors on missing modules, and none of
+# the feature packages (app.up, app.observation, app.activa) exist yet.
+# Each feature plan adds its contract when the package lands (see the doc).
+#
+# The Router→Repository rule is enforced by the AST linter (rule A1 in
+# app/lint/architecture.py), which is more precise than import-linter for
+# path-based constraints.
+[tool.importlinter]
+root_package = "app"
+
+# Plan 122b / ADR-018 §6: no AI on CRM data, made mechanical. No centre CRM module may
+# import an AI, OCR or Luma package; adding AI would need the centre's written
+# instruction and a DPIA update first.
+[[tool.importlinter.contracts]]
+name = "Centre CRM must not import AI, OCR or Luma (no AI on CRM data)"
+type = "forbidden"
+source_modules = [
+    "app.crm",
+    "app.services.crm",
+    "app.repositories.crm",
+    "app.schemas.crm",
+    "app.api.routes.crm",
+    "app.encryption.crm_cipher",
+]
+forbidden_modules = [
+    "app.ai",
+    "app.ocr",
+    "app.luma",
+    "app.services.luma",
+    "app.repositories.luma",
+    "app.models.luma",
+    "app.api.routes.luma",
+    "app.api.routes.ai",
+    "app.services.ai_governance_service",
+    "app.services.ai_prompt_service",
+    "app.services.document_ocr_service",
+    "app.services.summary_service",
+]
+# Shared infrastructure (idempotency, permissions, GDPR export) reaches Luma for its
+# own reasons; what this contract pins is that CRM code itself never calls AI.
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "Repositories must not import from services (no upward dependency)"
+type = "forbidden"
+source_modules = ["app.repositories"]
+forbidden_modules = ["app.services"]
+
+[[tool.importlinter.contracts]]
+name = "Models must not import from services or repositories (pure data layer)"
+type = "forbidden"
+source_modules = ["app.models"]
+forbidden_modules = ["app.services", "app.repositories", "app.api"]
+
+# Plan 020: the feed/home READ layer renders from FeedEntry's denormalised columns
+# ALONE — it must never bulk-load the source UP / Document / Observation entities
+# (import-linter A5 / the no-N+1 rule). This forbids the read modules from importing
+# those domains' models or packages, so the "render from FeedEntry alone" invariant
+# cannot silently regress into a cross-domain join.
+[[tool.importlinter.contracts]]
+name = "Feed/home read layer must not import UP/Document/Observation domains (render from FeedEntry alone)"
+type = "forbidden"
+source_modules = [
+    "app.repositories.feed_repository",
+    "app.repositories.memoria_repository",
+    "app.repositories.esfera_repository",
+    "app.services.feed_read_service",
+    "app.services.esfera_service",
+    "app.services.home_service",
+    "app.services.home_cache",
+    "app.api.routes.feed",
+    "app.api.routes.home",
+    "app.middleware.etag",
+]
+forbidden_modules = [
+    "app.up",
+    "app.observation",
+    "app.document",
+    "app.models.up",
+    "app.models.document",
+    "app.models.observation",
+]
+
+# Plan 021: the Activa domain's completion path creates a family UP, but it MUST do so
+# through the ActivaUpWriterPort (app.shared.ports) — NEVER by importing the UP domain.
+# This is the hard cross-domain edge. The composition root (app.api.routes.activa) is
+# the only place allowed to import both UPService and the Activa services to wire them.
+#   - app.activa            — the Activa domain package (errors + future domain logic)
+#   - app.services.exercici_service / app.services.plan_enrolment_service /
+#     app.services.activa_catalogue_service — the Activa service logic
+#   - app.repositories.activa_repository — the Activa data access
+# none of these may import the UP domain (app.up, app.services.up_service,
+# app.repositories.up_repository, app.models.up). The neutral OutboxRepository
+# (app.repositories.outbox_repository) and PointsService / FeedRepository (shared infra,
+# reached via the port) are NOT forbidden.
+[[tool.importlinter.contracts]]
+name = "Activa domain must not import the UP domain (cross-domain bridge is the port only)"
+type = "forbidden"
+source_modules = [
+    "app.activa",
+    "app.services.exercici_service",
+    "app.services.plan_enrolment_service",
+    "app.services.activa_catalogue_service",
+    "app.repositories.activa_repository",
+]
+forbidden_modules = [
+    "app.up",
+    "app.services.up_service",
+    "app.repositories.up_repository",
+    "app.models.up",
+]
+
+# Plan 022: the structural wall (API.md §4.6) keeps the observation/place trust zone
+# (place-authored) separate from the UP family trust zone (family-authored). The Place
+# domain must never import the UP domain — a Place connection touches feed_entries/
+# observations only via raw SQL through its own repositories, never by reaching into
+# app.up. (Observation CREATE itself is Plan 022b and stays in its own boundary.)
+[[tool.importlinter.contracts]]
+name = "Place domain must not import the UP domain (trust-zone structural wall)"
+type = "forbidden"
+source_modules = [
+    "app.places",
+    "app.services.place_service",
+    "app.services.place_team_service",
+    "app.repositories.place_repository",
+    "app.repositories.place_audit_repository",
+    "app.repositories.place_team_repository",
+    "app.api.routes.place_team",
+]
+forbidden_modules = [
+    "app.up",
+    "app.services.up_service",
+    "app.repositories.up_repository",
+    "app.models.up",
+]
+
+# Plan 022b: the no-auth observation submit is the highest-risk surface and lives in
+# its OWN trust zone (place-authored Art-9 writes). app.observation MUST NOT import the
+# UP family trust zone — the unified feed is written via the neutral shared
+# FeedRepository.write_entry, never by reaching into app.up (API.md §4.6). The Bearer
+# + no-auth routers + the ObservationService + the scope-token verifier all obey this.
+[[tool.importlinter.contracts]]
+name = "Observation domain must not import the UP domain (trust-zone structural wall)"
+type = "forbidden"
+source_modules = [
+    "app.observation",
+    "app.services.observation_service",
+    "app.repositories.observation_repository",
+    "app.security.observation_ratelimit",
+    "app.places.scope_token_verify",
+    "app.api.routes.public_observations",
+    "app.api.routes.observations",
+]
+forbidden_modules = [
+    "app.up",
+    "app.services.up_service",
+    "app.repositories.up_repository",
+    "app.models.up",
+]
+
+# Plan 022c: Converses (family↔place messaging) is its own messaging surface — it never
+# writes a FeedEntry and never reaches into the UP family trust zone. app.conversa MUST
+# NOT import app.up. app.conversa → app.places IS allowed (the messaging_on gate + the
+# PlaceMembership connection check are legitimate Place-domain dependencies), so
+# app.places is deliberately NOT in forbidden_modules.
+[[tool.importlinter.contracts]]
+name = "Conversa domain must not import the UP domain (trust-zone structural wall)"
+type = "forbidden"
+source_modules = [
+    "app.conversa",
+    "app.services.conversa_service",
+    "app.repositories.conversa_repository",
+    "app.api.routes.conversas",
+]
+forbidden_modules = [
+    "app.up",
+    "app.services.up_service",
+    "app.repositories.up_repository",
+    "app.models.up",
+]
+
+# Plan 023: the Arxiu Document domain is its OWN root (UP, Document, Observation are
+# separate roots — accepted_mvp §18.99d). The Document domain MUST NOT import the UP
+# domain. The UP↔Document attach-arxiu link is bridged via app.shared.ports
+# (DocumentAttachPort + UpBackLinkPort) at the composition root (app.api.routes.documents),
+# and save_to_arxiu is bridged via the transactional outbox (app.up emits an event;
+# app.tasks.outbox_drainer drains it into a Document). The DocumentService, its
+# repositories, the OCR/expiry/bulk modules, and the document route obey this — they
+# write the unified feed via the neutral FeedRepository.write_entry, never via app.up.
+# The composition-root route (app.api.routes.documents) imports BOTH (it is the bridge)
+# and is therefore NOT in source_modules.
+[[tool.importlinter.contracts]]
+name = "Document (Arxiu) domain must not import the UP domain (separate-roots structural wall)"
+type = "forbidden"
+source_modules = [
+    "app.document",
+    "app.services.document_service",
+    "app.services.document_bulk_service",
+    "app.services.document_share_service",
+    "app.repositories.document_repository",
+    "app.tasks.document_ocr",
+    "app.tasks.document_expiry",
+    "app.tasks.document_storage_reaper",
+    "app.ocr",
+]
+forbidden_modules = [
+    "app.up",
+    "app.services.up_service",
+    "app.repositories.up_repository",
+    "app.models.up",
+]
+
+# Plan 024: the notification layer is SHARED INFRA — it consumes the transactional outbox
+# events every prior plan provisioned and fans them out to in-app Notification rows +
+# push. It dispatches by TOPIC STRING + PAYLOAD IDs ONLY: it reads the notification-infra
+# repos + the neutral family_membership repo + the generic outbox payload, and it MUST NOT
+# import a feature domain (the whole point of the outbox is producer/consumer decoupling).
+# The generalized DRAINER (app.tasks.outbox_drainer) is the composition root / bridge —
+# it ALSO owns the Plan 023 save_to_arxiu handler (which lazily imports DocumentService),
+# so it is deliberately NOT in source_modules here (mirrors app.api.routes.documents being
+# exempt from the Arxiu wall). The pure notification modules below ARE walled.
+[[tool.importlinter.contracts]]
+name = "Notification layer must not import feature domains (shared-infra topic-dispatch wall)"
+type = "forbidden"
+source_modules = [
+    "app.notifications",
+    "app.services.notification_service",
+    "app.repositories.notification_repository",
+    "app.push",
+]
+forbidden_modules = [
+    "app.up",
+    "app.observation",
+    "app.document",
+    "app.activa",
+    "app.services.up_service",
+    "app.services.observation_service",
+    "app.services.document_service",
+    "app.services.exercici_service",
+    "app.repositories.up_repository",
+    "app.repositories.observation_repository",
+    "app.repositories.document_repository",
+    "app.repositories.activa_repository",
+    "app.models.up",
+    "app.models.observation",
+    "app.models.document",
+    "app.models.activa",
+]
+
+# Plan 026: the AI Patrons domain (app.ai) is its OWN root. AI insights are computed from the
+# UP / observation / document data via the SHARED tables at the SQL layer ONLY (raw SQL in the
+# InsightService + the cascade, like the feed_entries pattern). The UP-delete → insight
+# invalidation cascade is bridged via the transactional OUTBOX (app.up emits up.deleted; the
+# outbox drainer's AI topic handler lazily imports app.ai.cascade), NEVER by a cross-domain
+# import. app.ai MUST NOT import app.up / app.observation / app.document. The drainer
+# (app.tasks.outbox_drainer) is the composition-root bridge and is deliberately NOT walled
+# here (it lazily imports app.ai.cascade — the same exemption the Arxiu bridge has).
+[[tool.importlinter.contracts]]
+name = "AI Patrons domain must not import UP/observation/document (outbox-bridged cascade, not import)"
+type = "forbidden"
+source_modules = [
+    "app.ai",
+]
+forbidden_modules = [
+    "app.up",
+    "app.observation",
+    "app.document",
+    "app.services.up_service",
+    "app.services.observation_service",
+    "app.services.document_service",
+    "app.repositories.up_repository",
+    "app.repositories.observation_repository",
+    "app.repositories.document_repository",
+    "app.models.up",
+    "app.models.observation",
+    "app.models.document",
+]
+
+# Plan 028: the content-moderation layer (app.moderation) is its OWN root. It hides the SHARED
+# FeedEntry (neutral FeedRepository) + emits a content.taken_down OUTBOX event for the source
+# domain to drain (the outbox drainer's content.taken_down handler sets the source row's flag via
+# raw SQL on the shared table). It resolves an entity's uploader via raw SQL on the shared tables
+# (ups/documents/comments), NEVER by importing app.up / app.observation / app.document. So a
+# take-down can never reach into a feature domain — the only cross-domain channel is the outbox.
+# The authed + reviewer routers (app.api.routes.content_reports) and the no-auth share-viewer
+# report (app.api.routes.public_content_reports) obey this too. The public report router imports
+# DocumentShareService (the Plan-017 SHARE infra, app.services.document_share_service) to resolve a
+# token → document — that is NOT the Document CONTENT domain (app.services.document_service /
+# app.models.document), so it is correctly absent from forbidden_modules.
+[[tool.importlinter.contracts]]
+name = "Moderation domain must not import UP/observation/document (outbox-bridged takedown, not import)"
+type = "forbidden"
+source_modules = [
+    "app.moderation",
+    "app.api.routes.content_reports",
+    "app.api.routes.public_content_reports",
+]
+forbidden_modules = [
+    "app.up",
+    "app.observation",
+    "app.document",
+    "app.services.up_service",
+    "app.services.observation_service",
+    "app.services.document_service",
+    "app.repositories.up_repository",
+    "app.repositories.observation_repository",
+    "app.repositories.document_repository",
+    "app.models.up",
+    "app.models.observation",
+    "app.models.document",
+]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.411",
+]
+
+[tool.pyright]
+include = ["app"]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "basic"
+pythonVersion = "3.13"
+# The ORM + FastAPI DI layers use runtime patterns pyright's strict mode
+# can't model; basic mode still catches missing imports, bad signatures,
+# undefined names. Raise selectively per module later.
+reportMissingImports = true
+reportUndefinedVariable = true
+
+[[tool.importlinter.contracts]]
+name = "Luma cannot directly consume Esfera product domain implementations"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["app.services.luma", "app.repositories.luma", "app.models.luma", "app.luma"]
+forbidden_modules = [
+    "app.up", "app.services.up_service", "app.repositories.up_repository", "app.models.up",
+    "app.activa", "app.services.exercici_service", "app.repositories.activa_repository",
+    "app.services.observation_service", "app.services.document_service",
+]
+
+[[tool.importlinter.contracts]]
+name = "Esfera product domains cannot directly consume Luma implementations"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = [
+    "app.up", "app.services.up_service", "app.repositories.up_repository",
+    "app.activa", "app.services.exercici_service", "app.repositories.activa_repository",
+    "app.services.observation_service", "app.services.document_service",
+]
+forbidden_modules = ["app.services.luma", "app.repositories.luma", "app.models.luma", "app.luma"]

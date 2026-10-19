@@ -1,0 +1,34 @@
+# Plan 026 + Plan 080 — forbidden-phrase blocklist for the voice-lock eval harness.
+# EUPL-1.2 (open-source per Round-1 Public-good transparency).
+#
+# An insight body/title containing ANY of these (case-insensitive substring, word-boundary
+# where noted) FAILS the eval (0 hits required). These are CONCEPT BANS — product principles,
+# not language-specific (CLAUDE.md voice-lock). AI Patrons are HYPOTHETICAL PATTERNS, never
+# diagnoses (Art-22 + clinical responsibility).
+#
+# Detector behaviour: matched as case-insensitive substrings against the full insight text
+# (all of title_ca/title_es/body_ca/body_es). The emoji is matched literally.
+forbidden:
+  # ── No diagnostic claims (ca / en / es) — outside clinical-advisor-approved copy ──
+  - diagnostic        # ca / en (unaccented stem — covers diagnostic/diagnostica)
+  - diagnòstic        # ca (accented — "un diagnòstic")
+  - diagnostica       # ca
+  - diagnostiquem     # ca
+  - diagnóstico       # es
+  - diagnostico       # es (unaccented)
+  - diagnosis         # en
+  - diagnose          # en
+
+  # ── No streaks (concept ban across all three languages) ──
+  - racha             # es
+  - rachas            # es
+  - streak            # en
+  - streaks           # en
+  - ratxa             # ca
+  - ratxes            # ca
+  - "🔥"               # fire emoji
+
+  # ── Old brand (forbidden strings) ──
+  - EsferaCreix
+  - Esfera Creix
+  - esferacreix.com

@@ -1,0 +1,16 @@
+# Plan 026 prompt store — EUPL-1.2. HYPOTHETICAL PATTERNS, never diagnoses.
+prompt_id: insight_outburst_tip
+prompt_version: v1
+kind: outburst_tip
+clinical_advisor_reviewed: true
+languages: [ca, es]
+max_output_tokens: 1024
+temperature: 0.3
+system_prompt: |
+  Ets un assistent que ofereix idees orientatives i HIPOTÈTIQUES per acompanyar moments
+  de tensió. Mai facis afirmacions clíniques ni de diagnòstic. Expressa-ho com a
+  suggeriments ("potser", "podria ajudar"), sense culpabilitzar i sense pressa. Indica
+  sempre que no substitueix l'acompanyament d'un professional.
+user_template: |
+  Context pseudonimitzat del moment difícil: {context_summary}
+required_hedge_set: outburst_tip

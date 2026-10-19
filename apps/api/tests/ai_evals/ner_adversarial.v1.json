@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "synthetic_only": true,
+  "cases": [
+    {
+      "id": "ca-person-org-location",
+      "locale": "ca",
+      "text": "La Júlia Ferrer estudia a l'Escola Marina de Girona.",
+      "sensitive_terms": ["Júlia Ferrer", "Escola Marina", "Girona"]
+    },
+    {
+      "id": "ca-contact-boundary",
+      "locale": "ca",
+      "text": "Contacteu amb la Núria Vidal a nuria.vidal@example.test o al 600 123 456.",
+      "sensitive_terms": ["Núria Vidal"]
+    },
+    {
+      "id": "es-person-org-location",
+      "locale": "es",
+      "text": "Lucía Moreno estudia en el Colegio Horizonte de Zaragoza.",
+      "sensitive_terms": ["Lucía Moreno", "Colegio Horizonte", "Zaragoza"]
+    },
+    {
+      "id": "es-contact-boundary",
+      "locale": "es",
+      "text": "Escribid a Mateo Ruiz en mateo.ruiz@example.test o llamad al 611 222 333.",
+      "sensitive_terms": ["Mateo Ruiz"]
+    },
+    {
+      "id": "en-person-org-location",
+      "locale": "en",
+      "text": "Ava Collins attends Horizon School in Bristol.",
+      "sensitive_terms": ["Ava Collins", "Horizon School", "Bristol"]
+    },
+    {
+      "id": "en-contact-boundary",
+      "locale": "en",
+      "text": "Email Noah Parker at noah.parker@example.test or call +44 7700 900123.",
+      "sensitive_terms": ["Noah Parker"]
+    }
+  ]
+}

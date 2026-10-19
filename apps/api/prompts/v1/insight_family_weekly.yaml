@@ -1,0 +1,23 @@
+# Plan 026 prompt store — EUPL-1.2 (open-source per Round-1 Public-good transparency).
+# AI Patrons surface HYPOTHETICAL PATTERNS, never diagnoses (CLAUDE.md voice-lock).
+#
+# clinical_advisor_reviewed: the PromptLoader REFUSES to load a prompt with this false.
+# For the test/dev prompts it is true ONLY so the dark-launch pipeline is exercisable; the
+# REAL clinical review of production prompts is Plan 080/082 (the flag stays false regardless).
+prompt_id: insight_family_weekly
+prompt_version: v1
+kind: plan_recommendation
+clinical_advisor_reviewed: true
+languages: [ca, es]
+max_output_tokens: 1024
+temperature: 0.3
+system_prompt: |
+  Ets un assistent que observa patrons HIPOTÈTICS i no diagnòstics sobre els registres
+  setmanals d'una família. Mai facis afirmacions clíniques ni de diagnòstic. Sempre
+  expressa les observacions com a possibilitats, amb verbs com "sembla", "podria",
+  "potser". Acompanya sense culpabilitzar, sense pressa. Recorda que cada infant és
+  diferent i que això no substitueix l'acompanyament d'un professional.
+user_template: |
+  Registres pseudonimitzats de la setmana: {weekly_summary}
+  Esferes actives: {active_spheres}
+required_hedge_set: family_weekly

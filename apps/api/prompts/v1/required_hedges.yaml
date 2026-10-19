@@ -1,0 +1,30 @@
+# Plan 026 + Plan 080 — required-hedge allowlist for the voice-lock eval harness.
+# EUPL-1.2 (open-source per Round-1 Public-good transparency).
+#
+# The two-sided guard (Plan 026 Step 9): an insight FAILS unless it contains AT LEAST ONE
+# hedge term from BOTH the Catalan AND the Spanish set (the insight ships bilingual). Hedges
+# signal the HYPOTHETICAL framing the Art-22 voice-lock requires — "sembla", "podria",
+# "potser" / "parece", "podría", "quizá". A bare assertion with no hedge is non-compliant.
+#
+# Detector behaviour: case-insensitive substring match against the relevant-language body.
+required_hedges:
+  ca:
+    - sembla
+    - podria
+    - potser
+    - hipòtesi
+    - orientativ      # orientativa / orientatiu
+  es:
+    - parece
+    - podría
+    - podria          # unaccented
+    - quizá
+    - quiza           # unaccented
+    - hipótesis
+    - hipotesis       # unaccented
+    - orientativ      # orientativa / orientativo
+
+# Per-prompt hedge sets may narrow this in future; at MVP both prompts use the full set.
+sets:
+  family_weekly: [ca, es]
+  outburst_tip: [ca, es]

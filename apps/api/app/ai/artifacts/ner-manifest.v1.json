@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "manifest_version": "ner-pseudonymisation-2026-08-09.v1",
+  "spacy": {
+    "distribution": "spacy",
+    "version": "3.8.14"
+  },
+  "runtime": {
+    "max_text_chars": 20000,
+    "beam_width": 16,
+    "beam_density": 0.0001,
+    "redaction_candidate_floor": 0.05,
+    "catalan_skip_below": 0.85,
+    "container_max_rss_mib_per_model": 1400,
+    "container_max_seconds_per_model": 45
+  },
+  "review": {
+    "status": "pending_external",
+    "clinical_advisor_identity": null,
+    "reviewed_at": null,
+    "fixture_corpus_sha256": "a885ae07fabf972fc9940c9a8d9fd27a6db0a23f4fc3fd003c4b53fbae2585d8",
+    "signed_attestation_path": null,
+    "signed_attestation_sha256": null
+  },
+  "models": {
+    "ca": {
+      "distribution": "ca-core-news-lg",
+      "import_name": "ca_core_news_lg",
+      "version": "3.8.0",
+      "language": "ca",
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/ca_core_news_lg-3.8.0/ca_core_news_lg-3.8.0-py3-none-any.whl",
+      "wheel_size_bytes": 574014041,
+      "wheel_sha256": "6cee39a577ebee3a170154efdd67b7d8c290e6cfd5b8c6a243dff3fbbee14766",
+      "license": "GNU GPL 3.0",
+      "upstream_release_commit": "374ece8",
+      "expected_default_pipeline": [
+        "tok2vec",
+        "morphologizer",
+        "parser",
+        "attribute_ruler",
+        "lemmatizer",
+        "ner"
+      ],
+      "required_ner_labels": ["LOC", "MISC", "ORG", "PER"],
+      "upstream_ents_f": 0.8479427549
+    },
+    "es": {
+      "distribution": "es-core-news-lg",
+      "import_name": "es_core_news_lg",
+      "version": "3.8.0",
+      "language": "es",
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl",
+      "wheel_size_bytes": 567975270,
+      "wheel_sha256": "7c6c212715a12f31aacde3361754436945ff7376fb24cde57d0c277c9c9b050b",
+      "license": "GNU GPL 3.0",
+      "upstream_release_commit": "374ece8",
+      "expected_default_pipeline": [
+        "tok2vec",
+        "morphologizer",
+        "parser",
+        "attribute_ruler",
+        "lemmatizer",
+        "ner"
+      ],
+      "required_ner_labels": ["LOC", "MISC", "ORG", "PER"],
+      "upstream_ents_f": 0.8970169298
+    },
+    "en": {
+      "distribution": "en-core-web-lg",
+      "import_name": "en_core_web_lg",
+      "version": "3.8.0",
+      "language": "en",
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl",
+      "wheel_size_bytes": 400658291,
+      "wheel_sha256": "293e9547a655b25499198ab15a525b05b9407a75f10255e405e8c3854329ab63",
+      "license": "MIT",
+      "upstream_release_commit": "374ece8",
+      "expected_default_pipeline": [
+        "tok2vec",
+        "tagger",
+        "parser",
+        "attribute_ruler",
+        "lemmatizer",
+        "ner"
+      ],
+      "required_ner_labels": ["FAC", "GPE", "LOC", "ORG", "PERSON"],
+      "upstream_ents_f": 0.8553967422
+    }
+  }
+}

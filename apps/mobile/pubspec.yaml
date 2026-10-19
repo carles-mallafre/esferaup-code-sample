@@ -1,0 +1,149 @@
+name: esferaup
+description: EsferaUp — family app for capturing children's units of progress (UPs).
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+# NOTE (2026-06-03): foundation + auth dependency set. Feature-specific packages are added
+# per-feature (incremental — see docs/architecture/mobile-architecture.md §16). Deferred until
+# their feature lands: firebase_remote_config,
+# workmanager, in_app_review, fl_chart.
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
+  # State management & DI
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Navigation
+  go_router: ^14.6.2
+
+  # Networking
+  dio: ^5.7.0
+  dio_cache_interceptor: ^3.5.0
+
+  # Immutable models / serialization
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # Storage — secure (fail-closed) + prefs + offline relational (Drift)
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.5
+  drift: ^2.20.0
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.5
+  path: ^1.9.0
+
+  # Device / connectivity / app info
+  connectivity_plus: ^6.1.3
+  device_info_plus: ^11.1.1
+  package_info_plus: ^8.1.3
+
+  # Crash + analytics + push (Firebase). Native config files are injected by
+  # release CI; debug/fresh-clone builds remain usable when they are absent.
+  firebase_core: ^3.8.1
+  firebase_crashlytics: ^4.2.1
+  firebase_analytics: ^11.4.1
+  firebase_messaging: ^15.1.5
+  flutter_local_notifications: ^18.0.1
+
+  # Auth — social
+  google_sign_in: ^6.2.2
+  sign_in_with_apple: ^6.1.4
+  crypto: ^3.0.6
+  cryptography: ^2.7.0
+  image_picker: ^1.1.2
+  file_picker: ^8.1.7
+  flutter_pdfview: ^1.4.3
+  just_audio: ^0.10.5
+  # `record` 6.2.x is the final line compatible with the app's current
+  # Dart/Flutter floor. Audio notes use AAC-LC in an M4A container only.
+  record: ^6.2.1
+  permission_handler: ^12.0.3
+  in_app_purchase: ^3.2.0
+
+  # Utilities / UI primitives
+  uuid: ^4.5.1
+  url_launcher: ^6.3.1
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  flutter_timezone: ^5.1.0
+  app_links: ^6.3.3
+  app_settings: ^5.1.1
+  mobile_scanner: ^7.4.0
+  pdf: ^3.11.3
+  qr_flutter: ^4.1.0
+  share_plus: ^10.1.4
+  # This package exposes a native plugin and must be present in Release when
+  # Flutter registers it; its CLI also generates the checked-in splash assets.
+  flutter_native_splash: ^2.4.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.14
+  riverpod_generator: ^2.6.3
+  freezed: ^2.5.7
+  json_serializable: ^6.9.4
+  drift_dev: ^2.20.0
+  mocktail: ^1.0.4
+  flutter_launcher_icons: ^0.14.3
+
+flutter:
+  generate: true
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+
+  # Bundled fonts (spec §5.2): Lexend default + 3 selectable a11y families.
+  # Lexend + Nunito are variable fonts (single file = all weights). Family names
+  # MUST match AppFontFamily.family in lib/core/theme/app_typography.dart.
+  fonts:
+    - family: Lexend
+      fonts:
+        - asset: assets/fonts/Lexend.ttf
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito.ttf
+    - family: Atkinson Hyperlegible
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegible-Regular.ttf
+        - asset: assets/fonts/AtkinsonHyperlegible-Bold.ttf
+          weight: 700
+    - family: OpenDyslexic
+      fonts:
+        - asset: assets/fonts/OpenDyslexic-Regular.otf
+        - asset: assets/fonts/OpenDyslexic-Bold.otf
+          weight: 700
+
+# App launcher icon — generated from the Figma brand mark (C/BrandMark/160).
+# Regenerate: `dart run flutter_launcher_icons`.
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 23
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+
+# Native OS splash (§18.1) — brand navy, brand mark centred.
+# Regenerate: `dart run flutter_native_splash:create`.
+flutter_native_splash:
+  color: "#145D9E"
+  color_dark: "#0A2D4F"
+  image: "assets/icon/splash_logo.png"
+  image_dark: "assets/icon/splash_logo_dark.png"
+  android_12:
+    color: "#145D9E"
+    color_dark: "#0A2D4F"
+    image: "assets/icon/splash_logo_android12.png"
+    image_dark: "assets/icon/splash_logo_android12_dark.png"
